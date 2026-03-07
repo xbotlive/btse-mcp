@@ -405,6 +405,32 @@ class BTSEClient:
                 return self._post("/api/v2.2/risk_limit", payload)
             raise
 
+    def transfer(
+        self,
+        from_wallet: str,
+        to_wallet: str,
+        amount: float,
+        currency: str = "USDT",
+    ) -> Any:
+        """
+        POST /api/v2.1/user/wallet/transfer — move funds between wallets.
+
+        Common wallet names: CROSS@FUTURES, ISOLATED@<SYMBOL>@FUTURES, SPOT
+        Requires Transfer permission on the API key.
+        """
+        payload = {
+            "walletSrc":  from_wallet,
+            "walletDest": to_wallet,
+            "amount":     amount,
+            "currency":   currency,
+        }
+        try:
+            return self._post("/api/v2.1/user/wallet/transfer", payload)
+        except Exception as e:
+            if "33000001" in str(e) or "newer API version" in str(e):
+                return self._post("/api/v2.2/user/wallet/transfer", payload)
+            raise
+
 
 # ── Helpers ───────────────────────────────────────────────────────────────────
 
