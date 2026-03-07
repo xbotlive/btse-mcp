@@ -121,12 +121,28 @@ Risk limit tiers control the maximum position size allowed. Higher tiers allow l
 # Wallet balance
 btse_get_wallet_balance()
 
-# Transaction history (deposits, withdrawals, PnL settlements)
-btse_get_wallet_history(count=20)
-
 # Maker/taker fee rates
 btse_get_account_fees(symbol="BTC-PERP")
 ```
+
+---
+
+## Wallet History
+
+Use `btse_get_wallet_history` to review deposits, withdrawals, and PnL settlements:
+
+```
+# Last 20 wallet transactions (default)
+btse_get_wallet_history()
+
+# Filter by market, e.g. only BTC-PERP settlements
+btse_get_wallet_history(symbol="BTC-PERP", count=50)
+```
+
+Useful for:
+- Confirming a deposit has cleared before placing an order
+- Reviewing realised PnL over a period
+- Auditing withdrawals
 
 ---
 
