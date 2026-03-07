@@ -112,14 +112,15 @@ Use `btse_transfer` to move funds between spot and futures wallets, or between m
 | Wallet | Description |
 |---|---|
 | `SPOT` | Spot wallet |
-| `CROSS@FUTURES` | Cross-margin futures wallet |
-| `ISOLATED@BTC-PERP@FUTURES` | Isolated margin wallet for BTC-PERP |
+| `CROSS@` | Cross-margin futures wallet |
+| `ISOLATED@BTC-PERP-USDT` | Isolated margin wallet for BTC-PERP |
+| `ISOLATED@ETH-PERP-USDT` | Isolated margin wallet for ETH-PERP |
 
 **Example — move 500 USDT from spot to cross futures:**
 ```
 btse_transfer(
   from_wallet="SPOT",
-  to_wallet="CROSS@FUTURES",
+  to_wallet="CROSS@",
   amount=500,
   currency="USDT"
 )
