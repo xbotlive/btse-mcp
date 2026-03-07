@@ -62,7 +62,6 @@ class BTSEClient:
     # ── HTTP helpers ──────────────────────────────────────────────────────────
 
     def _get(self, path: str, params: Optional[dict] = None) -> Any:
-        # FIX: use urlencode — manual join doesn't percent-encode values
         if params:
             filtered  = {k: v for k, v in params.items() if v is not None}
             full_path = f"{path}?{urlencode(filtered)}" if filtered else path
@@ -88,13 +87,13 @@ class BTSEClient:
         return r.json()
 
     def _delete(self, path: str, params: Optional[dict] = None) -> Any:
-        # FIX: use urlencode
+        # FIX: sign base path only (not query string) — BTSE DELETE auth requires this
         if params:
             filtered  = {k: v for k, v in params.items() if v is not None}
             full_path = f"{path}?{urlencode(filtered)}" if filtered else path
         else:
             full_path = path
-        headers = self._headers(full_path)
+        headers = self._headers(path)  # sign path, not full_path
         r = httpx.delete(self.base_url + full_path, headers=headers, timeout=10)
         _raise_with_body(r)
         return r.json()
@@ -302,7 +301,6 @@ class BTSEClient:
 
     def get_order(self, order_id: str = None, cl_order_id: str = None) -> Any:
         """GET /api/v2.1/order — single order detail."""
-        # FIX: validate at least one identifier is provided
         if not order_id and not cl_order_id:
             raise ValueError("get_order requires either order_id or cl_order_id")
         params = {}
