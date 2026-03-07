@@ -94,3 +94,37 @@ Before any order tool, confirm the environment:
 3. Production BTC-PERP tracks the real market price (~$80,000–$100,000 range in 2025)
 
 If the price looks wrong for the intended environment, stop and reconfigure.
+
+---
+
+## Transferring Funds Between Wallets
+
+Use `btse_transfer` to move funds between spot and futures wallets, or between margin wallets.
+
+**Always confirm these details with the user before calling the tool:**
+- `from_wallet` — source wallet name
+- `to_wallet` — destination wallet name
+- `amount` — how much to move
+- `currency` — defaults to USDT
+
+**Common wallet names:**
+
+| Wallet | Description |
+|---|---|
+| `SPOT` | Spot wallet |
+| `CROSS@FUTURES` | Cross-margin futures wallet |
+| `ISOLATED@BTC-PERP@FUTURES` | Isolated margin wallet for BTC-PERP |
+
+**Example — move 500 USDT from spot to cross futures:**
+```
+btse_transfer(
+  from_wallet="SPOT",
+  to_wallet="CROSS@FUTURES",
+  amount=500,
+  currency="USDT"
+)
+```
+
+**Requires Transfer permission** on the API key. If the call returns HTTP 403, the key needs the Transfer permission added in BTSE → Account → API settings.
+
+Use `btse_list_accounts()` to confirm which account you're operating on before transferring.
