@@ -150,9 +150,15 @@ class BTSEClient:
     # ── Account endpoints ─────────────────────────────────────────────────────
 
     def get_wallet_balance(self, wallet: str = None) -> Any:
-        """GET /api/v2.1/user/wallet — futures wallet balance."""
+        """GET /api/v2.1/user/wallet — futures wallet balance.
+        Falls back to /api/v2.2/user/wallet for unified wallet accounts."""
         params = {"wallet": wallet} if wallet else {}
-        return self._get("/api/v2.1/user/wallet", params or None)
+        try:
+            return self._get("/api/v2.1/user/wallet", params or None)
+        except Exception as e:
+            if "33000001" in str(e) or "newer API version" in str(e):
+                return self._get("/api/v2.2/user/wallet", params or None)
+            raise
 
     def get_positions(self, symbol: str = None) -> Any:
         """GET /api/v2.1/user/positions — open positions."""
