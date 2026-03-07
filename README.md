@@ -11,6 +11,13 @@ LangChain) to query market data, manage positions, and place orders on BTSE via 
 - **pip** — check with `pip --version`
 - A BTSE account (testnet or live)
 
+> **Multiple Python versions (Anaconda etc):** use the full path explicitly:
+> ```bash
+> /usr/local/bin/python3.14 -m pip install -e .
+> /Library/Frameworks/Python.framework/Versions/3.14/bin/btse-mcp --help
+> ```
+> Use that same full path in the Claude Desktop config (Step 4).
+
 ---
 
 ## Step 1 — Get API keys from BTSE
@@ -72,6 +79,8 @@ btse-mcp list
 ```
 
 Credentials are stored encrypted at `~/.config/btse-mcp/accounts.enc`.
+
+> **Unified Futures Wallet:** If your BTSE account has been upgraded to the Unified Futures Wallet (all accounts from late 2024 onwards), account endpoints automatically use the v2.2 API. No action needed.
 
 ---
 
@@ -217,6 +226,8 @@ Auth signature tests run against the worked examples in the BTSE docs — no liv
 | `Connection failed` | Confirm testnet flag matches the account you created on |
 | Tools icon missing in Claude Desktop | Check JSON syntax in config file, restart Claude Desktop |
 | `ModuleNotFoundError: mcp` | Run `pip install -e .` again from the repo root |
+| `33000001: Unsupported API` | Your account uses the Unified Futures Wallet — the server auto-retries on v2.2, restart Claude Desktop |
+| `btse-mcp test` works but account tools fail | Restart Claude Desktop after any config or code change |
 
 ---
 
