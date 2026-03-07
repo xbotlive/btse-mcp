@@ -163,12 +163,22 @@ class BTSEClient:
     def get_positions(self, symbol: str = None) -> Any:
         """GET /api/v2.1/user/positions — open positions."""
         params = {"symbol": symbol} if symbol else {}
-        return self._get("/api/v2.1/user/positions", params or None)
+        try:
+            return self._get("/api/v2.1/user/positions", params or None)
+        except Exception as e:
+            if "33000001" in str(e) or "newer API version" in str(e):
+                return self._get("/api/v2.2/user/positions", params or None)
+            raise
 
     def get_account_fees(self, symbol: str = None) -> Any:
         """GET /api/v2.1/user/fees — maker/taker fee rates."""
         params = {"symbol": symbol} if symbol else {}
-        return self._get("/api/v2.1/user/fees", params or None)
+        try:
+            return self._get("/api/v2.1/user/fees", params or None)
+        except Exception as e:
+            if "33000001" in str(e) or "newer API version" in str(e):
+                return self._get("/api/v2.2/user/fees", params or None)
+            raise
 
     def get_leverage(self, symbol: str) -> Any:
         """GET /api/v2.1/leverage — current leverage and margin mode."""
@@ -183,7 +193,12 @@ class BTSEClient:
         params = {"count": count}
         if symbol:
             params["symbol"] = symbol
-        return self._get("/api/v2.1/user/wallet_history", params)
+        try:
+            return self._get("/api/v2.1/user/wallet_history", params)
+        except Exception as e:
+            if "33000001" in str(e) or "newer API version" in str(e):
+                return self._get("/api/v2.2/user/wallet_history", params)
+            raise
 
     # ── Order endpoints ───────────────────────────────────────────────────────
 
@@ -254,7 +269,12 @@ class BTSEClient:
     def get_open_orders(self, symbol: str = None) -> Any:
         """GET /api/v2.1/user/open_orders — list open orders."""
         params = {"symbol": symbol} if symbol else {}
-        return self._get("/api/v2.1/user/open_orders", params or None)
+        try:
+            return self._get("/api/v2.1/user/open_orders", params or None)
+        except Exception as e:
+            if "33000001" in str(e) or "newer API version" in str(e):
+                return self._get("/api/v2.2/user/open_orders", params or None)
+            raise
 
     def get_order(self, order_id: str = None, cl_order_id: str = None) -> Any:
         """GET /api/v2.1/order — single order detail."""
@@ -273,7 +293,12 @@ class BTSEClient:
         params = {"count": count}
         if symbol:
             params["symbol"] = symbol
-        return self._get("/api/v2.1/user/trade_history", params)
+        try:
+            return self._get("/api/v2.1/user/trade_history", params)
+        except Exception as e:
+            if "33000001" in str(e) or "newer API version" in str(e):
+                return self._get("/api/v2.2/user/trade_history", params)
+            raise
 
     def amend_order(
         self,
