@@ -595,6 +595,32 @@ TOOLS: list[Tool] = [
             },
         },
     ),
+
+    Tool(
+        name="btse_transfer",
+        description=(
+            "Transfer funds between BTSE wallets (e.g. spot to futures, or between isolated margin wallets). "
+            "Requires Transfer permission on the API key. "
+            "ALWAYS confirm the from_wallet, to_wallet, amount, and currency with the user before calling this tool."
+        ),
+        inputSchema={
+            "type": "object",
+            "required": ["from_wallet", "to_wallet", "amount"],
+            "properties": {
+                "account_id":  {"type": "string", "default": "default"},
+                "from_wallet": {
+                    "type": "string",
+                    "description": "Source wallet name, e.g. CROSS@FUTURES or SPOT",
+                },
+                "to_wallet": {
+                    "type": "string",
+                    "description": "Destination wallet name, e.g. ISOLATED@BTC-PERP@FUTURES or CROSS@FUTURES",
+                },
+                "amount":   {"type": "number", "description": "Amount to transfer (must be > 0)"},
+                "currency": {"type": "string", "default": "USDT", "description": "Currency to transfer, default USDT"},
+            },
+        },
+    ),
 ]
 
 
@@ -911,6 +937,22 @@ async def call_tool(name: str, arguments: dict) -> list[TextContent]:
                     "unrealised_pnl": round(unrealised_pnl, 4),
                     "risk_flag":      risk_flag,
                 })
+
+            case "btse_transfer":
+                from_wallet = arguments["from_wallet"]
+                to_wallet   = arguments["to_wallet"]
+                amount      = float(arguments["amount"])
+                currency    = arguments.get("currency", "USDT")
+
+                if amount <= 0:
+                    return _err(f"amount must be > 0, got {amount}")
+
+                return _ok(client.transfer(
+                    from_wallet=from_wallet,
+                    to_wallet=to_wallet,
+                    amount=amount,
+                    currency=currency,
+                ))
 
             case _:
                 return _err(f"Unknown tool: {name}")
