@@ -42,7 +42,8 @@ class BTSEClient:
     # ── Auth ──────────────────────────────────────────────────────────────────
 
     def _sign(self, path: str, nonce: str, body: str = "") -> str:
-        """Return HMAC-SHA384 hex digest over (path + nonce + body)."""
+        """Return HMAC-SHA384 hex digest over (path + nonce + body).
+        path must be the bare URL path with no query string."""
         msg = path + nonce + body
         return hmac.new(
             self.api_secret.encode(),
@@ -62,13 +63,14 @@ class BTSEClient:
     # ── HTTP helpers ──────────────────────────────────────────────────────────
 
     def _get(self, path: str, params: Optional[dict] = None) -> Any:
-        # FIX: use urlencode — manual join doesn't percent-encode values
         if params:
             filtered  = {k: v for k, v in params.items() if v is not None}
             full_path = f"{path}?{urlencode(filtered)}" if filtered else path
         else:
             full_path = path
-        headers = self._headers(full_path)
+        # FIX: sign over bare path only — query string must NOT be included in
+        # the signature, even though the full URL with params is sent to BTSE.
+        headers = self._headers(path)
         r = httpx.get(self.base_url + full_path, headers=headers, timeout=10)
         _raise_with_body(r)
         return r.json()
@@ -88,13 +90,13 @@ class BTSEClient:
         return r.json()
 
     def _delete(self, path: str, params: Optional[dict] = None) -> Any:
-        # FIX: use urlencode
         if params:
             filtered  = {k: v for k, v in params.items() if v is not None}
             full_path = f"{path}?{urlencode(filtered)}" if filtered else path
         else:
             full_path = path
-        headers = self._headers(full_path)
+        # FIX: sign over bare path only — same as _get above.
+        headers = self._headers(path)
         r = httpx.delete(self.base_url + full_path, headers=headers, timeout=10)
         _raise_with_body(r)
         return r.json()
@@ -298,7 +300,6 @@ class BTSEClient:
 
     def get_order(self, order_id: str = None, cl_order_id: str = None) -> Any:
         """GET /api/v2.1/order — single order detail."""
-        # FIX: validate at least one identifier is provided
         if not order_id and not cl_order_id:
             raise ValueError("get_order requires either order_id or cl_order_id")
         params = {}
@@ -408,7 +409,7 @@ class BTSEClient:
 
 def _raise_with_body(r: httpx.Response) -> None:
     """
-    FIX: raise on HTTP errors and include BTSE's response body in the message
+    Raise on HTTP errors and include BTSE's response body in the message
     so callers see the actual rejection reason (e.g. 'Order size too small'),
     not just the HTTP status code.
     """
