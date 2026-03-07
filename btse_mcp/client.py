@@ -182,11 +182,21 @@ class BTSEClient:
 
     def get_leverage(self, symbol: str) -> Any:
         """GET /api/v2.1/leverage — current leverage and margin mode."""
-        return self._get("/api/v2.1/leverage", {"symbol": symbol})
+        try:
+            return self._get("/api/v2.1/leverage", {"symbol": symbol})
+        except Exception as e:
+            if "33000001" in str(e) or "newer API version" in str(e):
+                return self._get("/api/v2.2/leverage", {"symbol": symbol})
+            raise
 
     def get_risk_limit(self, symbol: str) -> Any:
         """GET /api/v2.1/risk_limit — current risk limit tier."""
-        return self._get("/api/v2.1/risk_limit", {"symbol": symbol})
+        try:
+            return self._get("/api/v2.1/risk_limit", {"symbol": symbol})
+        except Exception as e:
+            if "33000001" in str(e) or "newer API version" in str(e):
+                return self._get("/api/v2.2/risk_limit", {"symbol": symbol})
+            raise
 
     def get_wallet_history(self, symbol: str = None, count: int = 20) -> Any:
         """GET /api/v2.1/user/wallet_history — wallet transaction history."""
@@ -247,7 +257,12 @@ class BTSEClient:
             payload["takeProfitPrice"] = take_profit_price
         if stop_loss_price is not None:
             payload["stopLossPrice"] = stop_loss_price
-        return self._post("/api/v2.1/order", payload)
+        try:
+            return self._post("/api/v2.1/order", payload)
+        except Exception as e:
+            if "33000001" in str(e) or "newer API version" in str(e):
+                return self._post("/api/v2.2/order", payload)
+            raise
 
     def cancel_order(
         self,
@@ -264,7 +279,12 @@ class BTSEClient:
             params["orderID"] = order_id
         elif cl_order_id:
             params["clOrderID"] = cl_order_id
-        return self._delete("/api/v2.1/order", params)
+        try:
+            return self._delete("/api/v2.1/order", params)
+        except Exception as e:
+            if "33000001" in str(e) or "newer API version" in str(e):
+                return self._delete("/api/v2.2/order", params)
+            raise
 
     def get_open_orders(self, symbol: str = None) -> Any:
         """GET /api/v2.1/user/open_orders — list open orders."""
@@ -286,7 +306,12 @@ class BTSEClient:
             params["orderID"] = order_id
         else:
             params["clOrderID"] = cl_order_id
-        return self._get("/api/v2.1/order", params)
+        try:
+            return self._get("/api/v2.1/order", params)
+        except Exception as e:
+            if "33000001" in str(e) or "newer API version" in str(e):
+                return self._get("/api/v2.2/order", params)
+            raise
 
     def get_trade_history(self, symbol: str = None, count: int = 20) -> Any:
         """GET /api/v2.1/user/trade_history — user trade history."""
@@ -327,7 +352,12 @@ class BTSEClient:
             payload["orderSize"] = order_size
         if trigger_price is not None:
             payload["triggerPrice"] = trigger_price
-        return self._put("/api/v2.1/order", payload)
+        try:
+            return self._put("/api/v2.1/order", payload)
+        except Exception as e:
+            if "33000001" in str(e) or "newer API version" in str(e):
+                return self._put("/api/v2.2/order", payload)
+            raise
 
     def close_position(
         self,
@@ -339,7 +369,12 @@ class BTSEClient:
         payload: dict = {"symbol": symbol, "type": close_type.upper()}
         if price is not None:
             payload["price"] = price
-        return self._post("/api/v2.1/order/close_position", payload)
+        try:
+            return self._post("/api/v2.1/order/close_position", payload)
+        except Exception as e:
+            if "33000001" in str(e) or "newer API version" in str(e):
+                return self._post("/api/v2.2/order/close_position", payload)
+            raise
 
     # ── Risk / leverage ───────────────────────────────────────────────────────
 
@@ -350,18 +385,23 @@ class BTSEClient:
         margin_mode: str = "ISOLATED",
     ) -> Any:
         """POST /api/v2.1/leverage — set leverage. leverage=0 means max cross."""
-        return self._post("/api/v2.1/leverage", {
-            "symbol":     symbol,
-            "leverage":   leverage,
-            "marginMode": margin_mode.upper(),
-        })
+        payload = {"symbol": symbol, "leverage": leverage, "marginMode": margin_mode.upper()}
+        try:
+            return self._post("/api/v2.1/leverage", payload)
+        except Exception as e:
+            if "33000001" in str(e) or "newer API version" in str(e):
+                return self._post("/api/v2.2/leverage", payload)
+            raise
 
     def set_risk_limit(self, symbol: str, risk_limit_level: int) -> Any:
         """POST /api/v2.1/risk_limit — set risk limit tier."""
-        return self._post("/api/v2.1/risk_limit", {
-            "symbol":         symbol,
-            "riskLimitLevel": risk_limit_level,
-        })
+        payload = {"symbol": symbol, "riskLimitLevel": risk_limit_level}
+        try:
+            return self._post("/api/v2.1/risk_limit", payload)
+        except Exception as e:
+            if "33000001" in str(e) or "newer API version" in str(e):
+                return self._post("/api/v2.2/risk_limit", payload)
+            raise
 
 
 # ── Helpers ───────────────────────────────────────────────────────────────────
