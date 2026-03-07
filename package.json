@@ -1,0 +1,50 @@
+{
+  "name": "@btse/skills",
+  "version": "0.1.0",
+  "description": "AI Agent Skills for btse-mcp — Perpetual Futures Trading on BTSE",
+  "type": "module",
+  "scripts": {
+    "validate": "node --import tsx scripts/validate-skills.ts",
+    "prepublishOnly": "npm run validate",
+    "lint": "eslint scripts --ext .ts",
+    "lint:fix": "eslint scripts --ext .ts --fix",
+    "format": "prettier --write \"**/*.{ts,md,json}\"",
+    "format:check": "prettier --check \"**/*.{ts,md,json}\""
+  },
+  "keywords": [
+    "btse",
+    "btse-mcp",
+    "skills",
+    "ai-agent",
+    "trading",
+    "futures",
+    "mcp"
+  ],
+  "author": "btse-mcp contributors",
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/xbotlive/btse-mcp.git"
+  },
+  "bugs": {
+    "url": "https://github.com/xbotlive/btse-mcp/issues"
+  },
+  "homepage": "https://github.com/xbotlive/btse-mcp#readme",
+  "files": [
+    "skills/",
+    "README.md"
+  ],
+  "devDependencies": {
+    "@types/node": "^24.0.0",
+    "eslint": "^9.39.2",
+    "eslint-config-prettier": "^10.1.8",
+    "prettier": "^3.8.1",
+    "tsx": "^4.19.0",
+    "typescript": "^5.9.3",
+    "typescript-eslint": "^8.54.0",
+    "yaml": "^2.8.2"
+  },
+  "engines": {
+    "node": ">=20.0.0"
+  }
+}
