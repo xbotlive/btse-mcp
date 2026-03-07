@@ -141,17 +141,21 @@ def render_position_review(account_id: str = "default") -> list[PromptMessage]:
                 text=f"""Please review all my open futures positions.
 
 Steps:
-1. Call btse_get_positions with account_id="{account_id}" to get all positions
-2. For each position, call btse_get_price with the position's symbol to get current mark price
-3. Call btse_get_leverage for each symbol to confirm leverage in use
+1. Call btse_get_positions with account_id="{account_id}" to get all open positions
+2. For each position, call btse_position_risk with that symbol and account_id="{account_id}"
+   — this returns pre-calculated liq_price, distance_pct, unrealised_pnl, and risk_flag
+   — do NOT calculate these yourself from raw position data
 
-Then present a table with these columns:
-| Symbol | Side | Size | Entry Price | Mark Price | Unrealised PnL | PnL % | Leverage | Liq. Price | Risk Flag |
+Present a table with these columns:
+| Symbol | Side | Size | Entry Price | Mark Price | Liq Price | Dist % | Unrealised PnL | Leverage | Risk Flag |
 
-Risk Flag rules:
-- 🔴 DANGER  — liquidation price within 5% of mark price
-- 🟡 WARNING — liquidation price within 10% of mark price
-- 🟢 OK      — otherwise
+Risk flag rendering:
+- risk_flag = DANGER  → 🔴 DANGER
+- risk_flag = WARNING → 🟡 WARNING
+- risk_flag = OK      → 🟢 OK
+
+If any position has risk_flag = DANGER, alert the user immediately at the top of your response
+before showing the table.
 
 Finish with a one-paragraph summary of total exposure and any recommended actions.
 """,
