@@ -83,6 +83,10 @@ def _validate_create_order(args: dict) -> None:
         if args.get("stop_loss_price") is None:
             raise ValidationError("stop_loss_price is required for OCO orders")
 
+    stealth = args.get("stealth")
+    if stealth is not None and not (1 <= int(stealth) <= 100):
+        raise ValidationError(f"stealth must be between 1 and 100, got: {stealth!r}")
+
 
 def _validate_amend_order(args: dict) -> None:
     """Validate amend_order arguments before sending to the API."""
@@ -312,6 +316,8 @@ TOOLS: list[Tool] = [
                 "trigger_price":     {"type": "number", "description": "Required for STOP and TRIGGER orders"},
                 "take_profit_price": {"type": "number", "description": "OCO: TP trigger price"},
                 "stop_loss_price":   {"type": "number", "description": "OCO: SL trigger price"},
+                "stealth":           {"type": "integer", "default": 100, "minimum": 1, "maximum": 100,
+                                      "description": "Stealth percentage 1–100. Lower = smaller visible slice in orderbook."},
             },
         },
     ),
@@ -615,6 +621,7 @@ async def call_tool(name: str, arguments: dict) -> list[TextContent]:
                     trigger_price=arguments.get("trigger_price"),
                     take_profit_price=arguments.get("take_profit_price"),
                     stop_loss_price=arguments.get("stop_loss_price"),
+                    stealth=arguments.get("stealth"),
                 ))
 
             case "btse_cancel_order":
@@ -680,12 +687,12 @@ async def call_tool(name: str, arguments: dict) -> list[TextContent]:
             # ── Composite tools ───────────────────────────────────────────────
 
             case "btse_market_snapshot":
-                symbol         = arguments["symbol"]
+                symbol          = arguments["symbol"]
                 orderbook_depth = arguments.get("orderbook_depth", 5)
                 funding_count   = arguments.get("funding_count", 5)
                 snapshot = {
-                    "price":          client.get_price(symbol),
-                    "orderbook":      client.get_orderbook(symbol, depth=orderbook_depth),
+                    "price":           client.get_price(symbol),
+                    "orderbook":       client.get_orderbook(symbol, depth=orderbook_depth),
                     "funding_history": client.get_funding_history(symbol, count=funding_count),
                 }
                 return _ok(snapshot)
@@ -700,12 +707,12 @@ async def call_tool(name: str, arguments: dict) -> list[TextContent]:
                 return _ok(overview)
 
             case "btse_safe_market_order":
-                symbol          = arguments["symbol"]
-                side            = str(arguments["side"]).upper()
-                size            = arguments["size"]
-                expected_price  = float(arguments["expected_price"])
-                max_slippage    = float(arguments.get("max_slippage_pct", 0.5))
-                reduce_only     = arguments.get("reduce_only", False)
+                symbol         = arguments["symbol"]
+                side           = str(arguments["side"]).upper()
+                size           = arguments["size"]
+                expected_price = float(arguments["expected_price"])
+                max_slippage   = float(arguments.get("max_slippage_pct", 0.5))
+                reduce_only    = arguments.get("reduce_only", False)
 
                 # Basic validation first
                 if side not in ("BUY", "SELL"):
@@ -714,7 +721,7 @@ async def call_tool(name: str, arguments: dict) -> list[TextContent]:
                     return _err(f"size must be > 0, got: {size}")
 
                 # Fetch current price
-                price_data  = client.get_price(symbol)
+                price_data = client.get_price(symbol)
                 if not price_data or not isinstance(price_data, list):
                     return _err(f"Could not fetch current price for {symbol}")
                 last_price = float(price_data[0].get("lastPrice", 0))
@@ -740,11 +747,11 @@ async def call_tool(name: str, arguments: dict) -> list[TextContent]:
                 )
                 return _ok({
                     "slippage_check": {
-                        "expected_price":  expected_price,
-                        "last_price":      last_price,
-                        "slippage_pct":    round(slippage_pct, 4),
+                        "expected_price":   expected_price,
+                        "last_price":       last_price,
+                        "slippage_pct":     round(slippage_pct, 4),
                         "max_slippage_pct": max_slippage,
-                        "passed":          True,
+                        "passed":           True,
                     },
                     "order": result,
                 })
