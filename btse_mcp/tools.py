@@ -31,6 +31,14 @@ app = Server("btse-mcp")
 # Cache clients per account_id for the lifetime of the server process.
 _clients: dict[str, BTSEClient] = {}
 
+# Minimum contract sizes per symbol — checked before any order API call.
+MIN_SIZES: dict[str, float] = {
+    "BTC-PERP": 0.001,
+    "ETH-PERP": 0.01,
+    "SOL-PERP": 0.1,
+    "XRP-PERP": 1.0,
+}
+
 
 def _get_client(account_id: str) -> BTSEClient:
     if account_id not in _clients:
@@ -73,6 +81,13 @@ def _validate_create_order(args: dict) -> None:
 
     if size is None or float(size) <= 0:
         raise ValidationError(f"size must be a positive number, got: {size!r}")
+
+    symbol = args.get("symbol", "")
+    min_size = MIN_SIZES.get(symbol)
+    if min_size and float(size) < min_size:
+        raise ValidationError(
+            f"{symbol} minimum order size is {min_size}, got {size}"
+        )
 
     if order_type == "LIMIT" and args.get("price") is None:
         raise ValidationError("price is required for LIMIT orders")
@@ -133,6 +148,15 @@ def _validate_set_leverage(args: dict) -> None:
 # ── Tool definitions ──────────────────────────────────────────────────────────
 
 TOOLS: list[Tool] = [
+
+    Tool(
+        name="btse_list_accounts",
+        description="List all configured BTSE account IDs and their environment (testnet or live).",
+        inputSchema={
+            "type": "object",
+            "properties": {},
+        },
+    ),
 
     # ── Market data ───────────────────────────────────────────────────────────
 
@@ -318,6 +342,8 @@ TOOLS: list[Tool] = [
                 "stop_loss_price":   {"type": "number", "description": "OCO: SL trigger price"},
                 "stealth":           {"type": "integer", "default": 100, "minimum": 1, "maximum": 100,
                                       "description": "Stealth percentage 1–100. Lower = smaller visible slice in orderbook."},
+                "max_deviation_pct": {"type": "number", "default": 5.0,
+                                      "description": "Reject LIMIT order if price deviates more than this % from mark price. Pass a higher value to override. Default 5.0."},
             },
         },
     ),
@@ -539,6 +565,15 @@ async def list_tools() -> list[Tool]:
 
 @app.call_tool()
 async def call_tool(name: str, arguments: dict) -> list[TextContent]:
+    # Tools that don't require a configured account
+    if name == "btse_list_accounts":
+        from btse_mcp.config import list_accounts
+        accounts = list_accounts()
+        return _ok([
+            {"id": a["id"], "env": "testnet" if a["testnet"] else "live"}
+            for a in accounts
+        ])
+
     account_id = arguments.get("account_id", "default")
 
     try:
@@ -607,6 +642,21 @@ async def call_tool(name: str, arguments: dict) -> list[TextContent]:
 
             case "btse_create_order":
                 _validate_create_order(arguments)
+
+                # Sanity check: reject LIMIT orders far from current mark price
+                if arguments.get("order_type", "").upper() == "LIMIT" and arguments.get("price") is not None:
+                    max_dev = float(arguments.get("max_deviation_pct", 5.0))
+                    price_data = client.get_price(arguments["symbol"])
+                    if price_data and isinstance(price_data, list):
+                        mark = float(price_data[0].get("markPrice", 0))
+                        if mark > 0:
+                            deviation = abs(arguments["price"] - mark) / mark * 100
+                            if deviation > max_dev:
+                                return _err(
+                                    f"Limit price {arguments['price']} is {deviation:.1f}% from "
+                                    f"mark price {mark}. Pass max_deviation_pct={int(deviation)+1} to override."
+                                )
+
                 return _ok(client.create_order(
                     symbol=arguments["symbol"],
                     side=arguments["side"],
