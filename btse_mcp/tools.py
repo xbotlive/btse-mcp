@@ -39,6 +39,16 @@ MIN_SIZES: dict[str, float] = {
     "XRP-PERP": 1.0,
 }
 
+# BTSE maintenance margin rates per symbol (used for liq price calculation).
+# Default 0.5% applies to most perpetuals at the base risk limit tier.
+MAINTENANCE_MARGIN_RATES: dict[str, float] = {
+    "BTC-PERP": 0.005,
+    "ETH-PERP": 0.005,
+    "SOL-PERP": 0.005,
+    "XRP-PERP": 0.005,
+}
+DEFAULT_MAINTENANCE_MARGIN_RATE = 0.005
+
 
 def _get_client(account_id: str) -> BTSEClient:
     if account_id not in _clients:
@@ -62,6 +72,20 @@ def _ok(data: Any) -> list[TextContent]:
 
 def _err(msg: str) -> list[TextContent]:
     return [TextContent(type="text", text=f"Error: {msg}")]
+
+
+def _sequential(calls: list) -> list:
+    """
+    Execute a list of zero-argument callables in sequence with a 70ms pause
+    between each call. Keeps throughput safely under BTSE's 15 req/s query limit.
+    """
+    import time
+    results = []
+    for i, fn in enumerate(calls):
+        results.append(fn())
+        if i < len(calls) - 1:
+            time.sleep(0.07)
+    return results
 
 
 # ── Input validation ──────────────────────────────────────────────────────────
@@ -553,6 +577,24 @@ TOOLS: list[Tool] = [
             },
         },
     ),
+
+    Tool(
+        name="btse_position_risk",
+        description=(
+            "Compute liquidation price, unrealised PnL, and risk flag for an open position. "
+            "Performs the calculation client-side from entry price, mark price, and leverage. "
+            "Returns a structured result with risk_flag: DANGER | WARNING | OK. "
+            "Use this instead of asking Claude to calculate liq price from raw position data."
+        ),
+        inputSchema={
+            "type": "object",
+            "required": ["symbol"],
+            "properties": {
+                "account_id": {"type": "string", "default": "default"},
+                "symbol":     {"type": "string", "description": "e.g. BTC-PERP"},
+            },
+        },
+    ),
 ]
 
 
@@ -740,19 +782,29 @@ async def call_tool(name: str, arguments: dict) -> list[TextContent]:
                 symbol          = arguments["symbol"]
                 orderbook_depth = arguments.get("orderbook_depth", 5)
                 funding_count   = arguments.get("funding_count", 5)
+                price, orderbook, funding = _sequential([
+                    lambda: client.get_price(symbol),
+                    lambda: client.get_orderbook(symbol, depth=orderbook_depth),
+                    lambda: client.get_funding_history(symbol, count=funding_count),
+                ])
                 snapshot = {
-                    "price":           client.get_price(symbol),
-                    "orderbook":       client.get_orderbook(symbol, depth=orderbook_depth),
-                    "funding_history": client.get_funding_history(symbol, count=funding_count),
+                    "price":           price,
+                    "orderbook":       orderbook,
+                    "funding_history": funding,
                 }
                 return _ok(snapshot)
 
             case "btse_account_overview":
-                symbol   = arguments.get("symbol")
+                symbol = arguments.get("symbol")
+                wallet, positions, open_orders = _sequential([
+                    lambda: client.get_wallet_balance(),
+                    lambda: client.get_positions(symbol),
+                    lambda: client.get_open_orders(symbol),
+                ])
                 overview = {
-                    "wallet":      client.get_wallet_balance(),
-                    "positions":   client.get_positions(symbol),
-                    "open_orders": client.get_open_orders(symbol),
+                    "wallet":      wallet,
+                    "positions":   positions,
+                    "open_orders": open_orders,
                 }
                 return _ok(overview)
 
@@ -804,6 +856,60 @@ async def call_tool(name: str, arguments: dict) -> list[TextContent]:
                         "passed":           True,
                     },
                     "order": result,
+                })
+
+            case "btse_position_risk":
+                symbol = arguments["symbol"]
+                mmr    = MAINTENANCE_MARGIN_RATES.get(symbol, DEFAULT_MAINTENANCE_MARGIN_RATE)
+
+                positions  = client.get_positions(symbol)
+                price_data = client.get_price(symbol)
+
+                if not positions or not isinstance(positions, list):
+                    return _err(f"No open position found for {symbol}")
+                if not price_data or not isinstance(price_data, list):
+                    return _err(f"Could not fetch price for {symbol}")
+
+                pos        = positions[0]
+                mark_price = float(price_data[0].get("markPrice", 0))
+                entry_price = float(pos.get("entryPrice", 0))
+                size        = float(pos.get("size", 0))
+                leverage    = float(pos.get("leverage", 1))
+                side        = pos.get("side", "BUY")
+
+                if entry_price == 0 or leverage == 0:
+                    return _err("Position data missing entryPrice or leverage")
+
+                # Isolated margin liquidation price approximation
+                # Long:  liq = entry × (1 - 1/leverage + mmr)
+                # Short: liq = entry × (1 + 1/leverage - mmr)
+                if side == "BUY":
+                    liq_price     = entry_price * (1 - 1 / leverage + mmr)
+                    unrealised_pnl = (mark_price - entry_price) * size
+                else:
+                    liq_price     = entry_price * (1 + 1 / leverage - mmr)
+                    unrealised_pnl = (entry_price - mark_price) * size
+
+                distance_pct = abs(mark_price - liq_price) / mark_price * 100
+
+                if distance_pct <= 5:
+                    risk_flag = "DANGER"
+                elif distance_pct <= 10:
+                    risk_flag = "WARNING"
+                else:
+                    risk_flag = "OK"
+
+                return _ok({
+                    "symbol":         symbol,
+                    "side":           side,
+                    "size":           size,
+                    "leverage":       leverage,
+                    "entry_price":    round(entry_price, 4),
+                    "mark_price":     round(mark_price, 4),
+                    "liq_price":      round(liq_price, 4),
+                    "distance_pct":   round(distance_pct, 2),
+                    "unrealised_pnl": round(unrealised_pnl, 4),
+                    "risk_flag":      risk_flag,
                 })
 
             case _:
