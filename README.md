@@ -86,33 +86,37 @@ Credentials are stored encrypted at `~/.config/btse-mcp/accounts.enc`.
 
 ## Step 4 — Connect to Claude Desktop
 
-Find the config file for your OS:
-
-| OS      | Path |
-|---------|------|
-| macOS   | `~/Library/Application Support/Claude/claude_desktop_config.json` |
-| Windows | `%APPDATA%\Claude\claude_desktop_config.json` |
-| Linux   | `~/.config/Claude/claude_desktop_config.json` |
-
-Open the file (create it if it doesn't exist) and add:
-
-```json
-{
-  "mcpServers": {
-    "btse": {
-      "command": "btse-mcp",
-      "args": ["start"]
-    }
-  }
-}
+```bash
+btse-mcp install-claude
 ```
 
+This auto-writes the correct config for your OS and creates the file if it doesn't exist. Then **restart Claude Desktop**.
+
+> **Manual alternative:** if the command fails, add this to your config file directly:
+>
+> | OS      | Path |
+> |---------|------|
+> | macOS   | `~/Library/Application Support/Claude/claude_desktop_config.json` |
+> | Windows | `%APPDATA%\Claude\claude_desktop_config.json` |
+> | Linux   | `~/.config/Claude/claude_desktop_config.json` |
+>
+> ```json
+> {
+>   "mcpServers": {
+>     "btse": {
+>       "command": "btse-mcp",
+>       "args": ["start"]
+>     }
+>   }
+> }
+> ```
+>
 > **Virtualenv users:** replace `"btse-mcp"` with the full path, e.g.:
 > ```json
 > "command": "/Users/yourname/.venv/bin/btse-mcp"
 > ```
 
-Restart Claude Desktop. Open a new chat — you should see a tools icon (🔧) in the input bar.
+Open a new chat in Claude Desktop — you should see a tools icon (🔧) in the input bar.
 
 **Test it:**
 > "What is the BTC-PERP mark price on BTSE using account testnet?"
