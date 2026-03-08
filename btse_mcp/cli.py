@@ -22,6 +22,7 @@ import getpass
 import json
 import os
 import platform
+import shutil
 import sys
 from pathlib import Path
 
@@ -37,7 +38,18 @@ def _claude_config_path() -> Path | None:
     return paths.get(platform.system())
 
 
-def _check_claude_desktop_config() -> bool:
+def _btse_mcp_command() -> str:
+    """Resolve the full path to the btse-mcp executable for the current Python install."""
+    # Same bin/ dir as the running Python — covers framework, venv, conda installs
+    candidate = Path(sys.executable).parent / "btse-mcp"
+    if candidate.exists():
+        return str(candidate)
+    # Fall back to PATH lookup (covers pipx and other global installs)
+    found = shutil.which("btse-mcp")
+    return found if found else "btse-mcp"
+
+
+() -> bool:
     """Read-only check. Prints status and returns True if config looks correct."""
     cfg_path = _claude_config_path()
 
@@ -68,9 +80,9 @@ def _check_claude_desktop_config() -> bool:
     cmd   = entry.get("command", "")
     args_ = entry.get("args", [])
 
-    if cmd != "btse-mcp" or args_ != ["start"]:
+    if not cmd or args_ != ["start"]:
         print(f"  ⚠  Entry exists but looks unexpected: {entry}")
-        print("     Expected: command=btse-mcp, args=[\"start\"]")
+        print("     Expected: args=[\"start\"] and a valid command path")
         return False
 
     print(f"  ✓  btse MCP entry found and looks correct")
@@ -99,7 +111,7 @@ def _patch_claude_desktop_config() -> bool:
         cfg = {}
 
     cfg.setdefault("mcpServers", {})["btse"] = {
-        "command": "btse-mcp",
+        "command": _btse_mcp_command(),
         "args":    ["start"],
     }
 
