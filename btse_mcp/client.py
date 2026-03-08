@@ -226,7 +226,6 @@ class BTSEClient:
         trigger_price: float = None,
         take_profit_price: float = None,
         stop_loss_price: float = None,
-        stealth: int = None,
     ) -> Any:
         """
         POST /api/v2.1/order — create a new order.
@@ -235,7 +234,6 @@ class BTSEClient:
         side          : BUY | SELL
         tx_type       : TRIGGER | STOP | LIMIT (default)
         time_in_force : GTC | IOC | FOK | DAY | WEEK | MONTH
-        stealth       : 1–100. Lower = smaller visible slice shown in orderbook.
         """
         payload: dict = {
             "symbol":        symbol,
@@ -258,8 +256,6 @@ class BTSEClient:
             payload["takeProfitPrice"] = take_profit_price
         if stop_loss_price is not None:
             payload["stopLossPrice"] = stop_loss_price
-        if stealth is not None:
-            payload["stealth"] = stealth
         try:
             return self._post("/api/v2.1/order", payload)
         except Exception as e:

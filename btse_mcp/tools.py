@@ -122,10 +122,6 @@ def _validate_create_order(args: dict) -> None:
         if args.get("stop_loss_price") is None:
             raise ValidationError("stop_loss_price is required for OCO orders")
 
-    stealth = args.get("stealth")
-    if stealth is not None and not (1 <= int(stealth) <= 100):
-        raise ValidationError(f"stealth must be between 1 and 100, got: {stealth!r}")
-
 
 def _validate_amend_order(args: dict) -> None:
     """Validate amend_order arguments before sending to the API."""
@@ -364,8 +360,6 @@ TOOLS: list[Tool] = [
                 "trigger_price":     {"type": "number", "description": "Required for STOP and TRIGGER orders"},
                 "take_profit_price": {"type": "number", "description": "OCO: TP trigger price"},
                 "stop_loss_price":   {"type": "number", "description": "OCO: SL trigger price"},
-                "stealth":           {"type": "integer", "default": 100, "minimum": 1, "maximum": 100,
-                                      "description": "Stealth percentage 1–100. Lower = smaller visible slice in orderbook."},
                 "max_deviation_pct": {"type": "number", "default": 5.0,
                                       "description": "Reject LIMIT order if price deviates more than this % from mark price. Pass a higher value to override. Default 5.0."},
             },
@@ -376,7 +370,8 @@ TOOLS: list[Tool] = [
         name="btse_cancel_order",
         description=(
             "Cancel a specific order by order_id or cl_order_id. "
-            "If neither is provided, cancels ALL open orders for the symbol."
+            "If neither is provided, cancels ALL open orders for the symbol — "
+            "in that case confirm=true is REQUIRED or the call will be rejected."
         ),
         inputSchema={
             "type": "object",
@@ -386,6 +381,7 @@ TOOLS: list[Tool] = [
                 "symbol":      {"type": "string"},
                 "order_id":    {"type": "string", "description": "Internal BTSE order ID"},
                 "cl_order_id": {"type": "string", "description": "Your custom order ID"},
+                "confirm":     {"type": "boolean", "description": "Required true when cancelling ALL orders (no order_id/cl_order_id)."},
             },
         },
     ),
@@ -739,14 +735,22 @@ async def call_tool(name: str, arguments: dict) -> list[TextContent]:
                     trigger_price=arguments.get("trigger_price"),
                     take_profit_price=arguments.get("take_profit_price"),
                     stop_loss_price=arguments.get("stop_loss_price"),
-                    stealth=arguments.get("stealth"),
                 ))
 
             case "btse_cancel_order":
+                order_id    = arguments.get("order_id")
+                cl_order_id = arguments.get("cl_order_id")
+                if not order_id and not cl_order_id:
+                    if not arguments.get("confirm"):
+                        return _err(
+                            "Bulk cancel requires confirm=true. "
+                            "This will cancel ALL open orders for "
+                            f"{arguments['symbol']}. Set confirm=true to proceed."
+                        )
                 return _ok(client.cancel_order(
                     arguments["symbol"],
-                    arguments.get("order_id"),
-                    arguments.get("cl_order_id"),
+                    order_id,
+                    cl_order_id,
                 ))
 
             case "btse_get_open_orders":
