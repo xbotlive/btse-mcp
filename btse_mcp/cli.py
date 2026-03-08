@@ -49,7 +49,7 @@ def _btse_mcp_command() -> str:
     return found if found else "btse-mcp"
 
 
-() -> bool:
+def _check_claude_desktop_config() -> bool:
     """Read-only check. Prints status and returns True if config looks correct."""
     cfg_path = _claude_config_path()
 
