@@ -11,13 +11,6 @@ LangChain) to query market data, manage positions, and place orders on BTSE via 
 - **pip** — check with `pip --version`
 - A BTSE account (testnet or live)
 
-> **Multiple Python versions (Anaconda etc):** use the full path explicitly:
-> ```bash
-> /usr/local/bin/python3.14 -m pip install -e .
-> /Library/Frameworks/Python.framework/Versions/3.14/bin/btse-mcp --help
-> ```
-> Use that same full path in the Claude Desktop config (Step 4).
-
 ---
 
 ## Step 1 — Get API keys from BTSE
@@ -38,29 +31,24 @@ Same steps at https://btse.com
 ## Step 2 — Install
 
 ```bash
-# Clone the repo
-git clone https://github.com/xbotlive/btse-mcp.git
-cd btse-mcp
-
-# Install — adds `btse-mcp` command to your PATH
-pip install -e .
+pip install btse-mcp
 
 # Verify
 btse-mcp --help
 ```
 
-> **Virtualenv users:** if `btse-mcp` is not found after install, use the full path:
-> - macOS/Linux: `~/.venv/bin/btse-mcp`
-> - Windows: `~\.venv\Scripts\btse-mcp.exe`
->
-> You will need this full path in the Claude Desktop config (Step 4).
+> **Multiple Python versions (Anaconda etc):** use the full path explicitly:
+> ```bash
+> /usr/local/bin/python3.14 -m pip install btse-mcp
+> ```
 
 ---
 
 ## Step 3 — Configure accounts
 
+### Testnet
+
 ```bash
-# Add a testnet account
 btse-mcp config --account-id testnet
 # Prompts:
 #   API Key    → paste your API key
@@ -69,8 +57,11 @@ btse-mcp config --account-id testnet
 
 # Verify the connection — should print BTC-PERP last price
 btse-mcp test testnet
+```
 
-# Add your live account when ready
+### Live (when ready)
+
+```bash
 btse-mcp config --account-id main
 # Same prompts — answer 'n' to testnet
 
@@ -104,16 +95,16 @@ This auto-writes the correct config for your OS and creates the file if it doesn
 > {
 >   "mcpServers": {
 >     "btse": {
->       "command": "btse-mcp",
+>       "command": "/full/path/to/btse-mcp",
 >       "args": ["start"]
 >     }
 >   }
 > }
 > ```
 >
-> **Virtualenv users:** replace `"btse-mcp"` with the full path, e.g.:
-> ```json
-> "command": "/Users/yourname/.venv/bin/btse-mcp"
+> Find the full path with:
+> ```bash
+> which btse-mcp
 > ```
 
 Open a new chat in Claude Desktop — you should see a tools icon (🔧) in the input bar.
@@ -141,10 +132,17 @@ Then use natural language in Cursor chat:
 
 ---
 
-## Alternative: run without installing
+## Alternative: run from source
 
 ```bash
-# From the repo root, no pip install required
+# Clone the repo
+git clone https://github.com/xbotlive/btse-mcp.git
+cd btse-mcp
+
+# Install in editable mode
+pip install -e .
+
+# Start
 python -m btse_mcp start
 ```
 
@@ -225,11 +223,11 @@ Auth signature tests run against the worked examples in the BTSE docs — no liv
 
 | Problem | Fix |
 |---------|-----|
-| `btse-mcp: command not found` | Use full path or activate your virtualenv |
+| `btse-mcp: command not found` | Run `which btse-mcp` to find the full path, or use `pip install btse-mcp` |
 | `401 Unauthorized` | Check API key and secret are copied correctly |
 | `Connection failed` | Confirm testnet flag matches the account you created on |
 | Tools icon missing in Claude Desktop | Check JSON syntax in config file, restart Claude Desktop |
-| `ModuleNotFoundError: mcp` | Run `pip install -e .` again from the repo root |
+| `ModuleNotFoundError: mcp` | Run `pip install btse-mcp` again |
 | `33000001: Unsupported API` | Your account uses the Unified Futures Wallet — the server auto-retries on v2.2, restart Claude Desktop |
 | `btse-mcp test` works but account tools fail | Restart Claude Desktop after any config or code change |
 
