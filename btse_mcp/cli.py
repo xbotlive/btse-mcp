@@ -7,6 +7,7 @@ btse-mcp config [--account-id ID]   Configure (or reconfigure) an account
 btse-mcp list                        List all configured accounts (shows testnet flag)
 btse-mcp test [ACCOUNT_ID] [--check] Test API connection; --check also validates Claude Desktop config
 btse-mcp delete ACCOUNT_ID          Remove a stored account
+btse-mcp install-claude             Auto-patch Claude Desktop config (no account setup needed)
 btse-mcp setup [--account-id ID]    Configure account AND auto-patch Claude Desktop config
 btse-mcp start                       Start MCP server (stdio)
 
@@ -190,6 +191,16 @@ def cmd_delete(args: argparse.Namespace) -> None:
     delete_account(args.account_id)
 
 
+def cmd_install_claude(args: argparse.Namespace) -> None:
+    """Patch Claude Desktop config only — no account setup required."""
+    print("Patching Claude Desktop config...")
+    ok = _patch_claude_desktop_config()
+    if ok:
+        print("\nDone. Restart Claude Desktop to connect.")
+    else:
+        print("\nAdd the entry manually — see README Step 4.")
+
+
 def cmd_setup(args: argparse.Namespace) -> None:
     """One-shot: configure account + patch Claude Desktop config."""
     print("=== btse-mcp setup ===\n")
@@ -251,6 +262,12 @@ def main() -> None:
     p_delete = sub.add_parser("delete", help="Delete a stored account")
     p_delete.add_argument("account_id", help="Account ID to delete")
 
+    # install-claude
+    sub.add_parser(
+        "install-claude",
+        help="Auto-patch Claude Desktop config (no account setup)",
+    )
+
     # setup
     p_setup = sub.add_parser(
         "setup",
@@ -268,6 +285,8 @@ def main() -> None:
     args = parser.parse_args()
 
     match args.command:
+        case "install-claude":
+            cmd_install_claude(args)
         case "config":
             cmd_config(args)
         case "list":
